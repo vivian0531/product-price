@@ -6,7 +6,7 @@
 
   <title>商品價格查詢</title>
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/@zxing/browser@latest"></script>
 
   <style>
     body {
@@ -14,77 +14,44 @@
       background: #f5f5f5;
       margin: 0;
       padding: 20px;
-      color: #333;
     }
 
     .container {
       max-width: 500px;
-      margin: 0 auto;
+      margin: auto;
       background: white;
       padding: 24px;
       border-radius: 16px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     }
 
     h1 {
       text-align: center;
-      margin-top: 0;
     }
 
-    #reader {
+    video {
       width: 100%;
-      margin: 20px auto;
-    }
-
-    input {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 14px;
-      font-size: 18px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      margin-bottom: 10px;
+      margin-top: 20px;
+      border-radius: 10px;
+      background: black;
     }
 
     button {
       width: 100%;
-      padding: 14px;
+      padding: 15px;
       font-size: 18px;
       border: none;
       border-radius: 8px;
       background: #333;
       color: white;
+      margin-bottom: 10px;
     }
 
     #result {
-      margin-top: 24px;
+      margin-top: 20px;
       padding: 16px;
-      background: #f8f8f8;
+      background: #f5f5f5;
       border-radius: 10px;
-      min-height: 50px;
-    }
-
-    .barcode {
-      color: #777;
-      font-size: 14px;
-    }
-
-    .product-name {
-      font-size: 22px;
-      font-weight: bold;
-      margin-top: 8px;
-    }
-
-    .price {
-      font-size: 30px;
-      font-weight: bold;
-      margin-top: 8px;
-    }
-
-    .hint {
-      text-align: center;
-      color: #777;
-      font-size: 14px;
+      font-size: 18px;
     }
   </style>
 </head>
@@ -95,138 +62,74 @@
 
   <h1>商品價格查詢</h1>
 
-  <div id="reader"></div>
+  <button onclick="startScanner()">
+    📷 開始掃描
+  </button>
 
-  <p class="hint">
-    點擊下方按鈕後，允許使用相機即可掃描商品條碼
-  </p>
-
-  <div>
-    <input
-      type="text"
-      id="barcodeInput"
-      placeholder="也可以手動輸入條碼"
-      inputmode="numeric"
-    >
-
-    <button onclick="manualSearch()">
-      手動查詢
-    </button>
-  </div>
+  <video id="video" autoplay muted playsinline></video>
 
   <div id="result">
-    尚未查詢商品
+    尚未掃描
   </div>
 
 </div>
 
 <script>
 
-let scanner = null;
+let codeReader = null;
 let scanning = false;
 
 function startScanner() {
 
   if (scanning) return;
 
-  scanner = new Html5Qrcode("reader");
+  document.getElementById("result").innerText =
+    "正在啟動相機...";
 
-  scanner.start(
+  codeReader =
+    new ZXingBrowser.BrowserMultiFormatReader();
+
+  codeReader.decodeFromConstraints(
     {
-      facingMode: "environment"
+      video: {
+        facingMode: {
+          ideal: "environment"
+        }
+      },
+      audio: false
     },
-    {
-      fps: 10,
-      qrbox: {
-        width: 280,
-        height: 160
+    "video",
+    (result, error) => {
+
+      if (result) {
+
+        scanning = false;
+
+        document.getElementById("result").innerText =
+          "掃描成功！條碼：" +
+          result.getText();
+
+        codeReader.reset();
       }
-    },
-    function(decodedText) {
 
-      document.getElementById("barcodeInput").value =
-        decodedText;
-
-      showBarcode(decodedText);
-
-      scanner.stop().then(function() {
-        scanning = false;
-      }).catch(function() {
-        scanning = false;
-      });
-
-    },
-    function(errorMessage) {
-      // 掃不到時不顯示錯誤
     }
 
-  ).then(function() {
+  ).then(() => {
 
     scanning = true;
 
-  }).catch(function(error) {
+    document.getElementById("result").innerText =
+      "📷 相機已啟動，請將條碼對準框內";
 
-    document.getElementById("result").innerHTML =
-      "❌ 相機啟動失敗";
+  }).catch(error => {
 
     console.log(error);
 
+    document.getElementById("result").innerText =
+      "❌ 相機無法啟動";
+
   });
 }
-
-
-function showBarcode(barcode) {
-
-  document.getElementById("result").innerHTML =
-    '<div class="barcode">掃描到的條碼</div>' +
-    '<div class="product-name">' +
-    barcode +
-    '</div>' +
-    '<br>' +
-    '目前先測試掃描功能。';
-}
-
-
-function manualSearch() {
-
-  const barcode =
-    document.getElementById("barcodeInput").value.trim();
-
-  if (!barcode) {
-
-    document.getElementById("result").innerHTML =
-      "請輸入條碼";
-
-    return;
-  }
-
-  showBarcode(barcode);
-}
-
-
-document.addEventListener(
-  "DOMContentLoaded",
-  function() {
-
-    const reader =
-      document.getElementById("reader");
-
-    const button =
-      document.createElement("button");
-
-    button.textContent =
-      "📷 開啟相機掃描";
-
-    button.onclick =
-      startScanner;
-
-    reader.parentNode.insertBefore(
-      button,
-      reader
-    );
-
-  }
-);
 
 </script>
 
