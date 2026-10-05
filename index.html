@@ -29,16 +29,11 @@
     h1 {
       text-align: center;
       margin-top: 0;
-      font-size: 26px;
     }
 
     #reader {
       width: 100%;
       margin: 20px auto;
-    }
-
-    .input-area {
-      margin-top: 20px;
     }
 
     input {
@@ -59,11 +54,6 @@
       border-radius: 8px;
       background: #333;
       color: white;
-      cursor: pointer;
-    }
-
-    button:active {
-      opacity: 0.8;
     }
 
     #result {
@@ -95,225 +85,150 @@
       text-align: center;
       color: #777;
       font-size: 14px;
-      margin-top: 12px;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="container">
+<div class="container">
 
-    <h1>商品價格查詢</h1>
+  <h1>商品價格查詢</h1>
 
-    <div id="reader"></div>
+  <div id="reader"></div>
 
-    <p class="hint">
-      掃描商品條碼或手動輸入條碼
-    </p>
+  <p class="hint">
+    點擊下方按鈕後，允許使用相機即可掃描商品條碼
+  </p>
 
-    <div class="input-area">
+  <div>
+    <input
+      type="text"
+      id="barcodeInput"
+      placeholder="也可以手動輸入條碼"
+      inputmode="numeric"
+    >
 
-      <input
-        type="text"
-        id="barcodeInput"
-        placeholder="請輸入商品條碼"
-        inputmode="numeric"
-      >
-
-      <button onclick="manualSearch()">
-        查詢價格
-      </button>
-
-    </div>
-
-    <div id="result">
-      尚未查詢商品
-    </div>
-
+    <button onclick="manualSearch()">
+      手動查詢
+    </button>
   </div>
 
-  <script>
+  <div id="result">
+    尚未查詢商品
+  </div>
 
-    // ⭐ 你的 Google Apps Script 網址
-    const API_URL =
-      "https://script.google.com/macros/s/AKfycbxCrtLEC2i2wS5x4ju8Bhcb37W2ef20D1makHm4caqKOxfwODa_G1DcfnMS3X6WORUObg/exec";
+</div>
 
-    let scanner = null;
-    let scanning = false;
+<script>
 
-    // =========================
-    // 開啟相機
-    // =========================
+let scanner = null;
+let scanning = false;
 
-    function startScanner() {
+function startScanner() {
 
-      if (scanning) return;
+  if (scanning) return;
 
-      scanner = new Html5Qrcode("reader");
+  scanner = new Html5Qrcode("reader");
 
-      scanner.start(
-        {
-          facingMode: "environment"
-        },
-        {
-          fps: 10,
-          qrbox: {
-            width: 280,
-            height: 160
-          }
-        },
-        function(decodedText) {
+  scanner.start(
+    {
+      facingMode: "environment"
+    },
+    {
+      fps: 10,
+      qrbox: {
+        width: 280,
+        height: 160
+      }
+    },
+    function(decodedText) {
 
-          document.getElementById("barcodeInput").value =
-            decodedText;
+      document.getElementById("barcodeInput").value =
+        decodedText;
 
-          searchProduct(decodedText);
+      showBarcode(decodedText);
 
-          scanner.stop().then(function() {
-            scanning = false;
-          }).catch(function() {
-            scanning = false;
-          });
-
-        },
-        function(errorMessage) {
-          // 掃不到時不顯示錯誤
-        }
-
-      ).then(function() {
-
-        scanning = true;
-
-      }).catch(function(error) {
-
-        document.getElementById("result").innerHTML =
-          "❌ 相機啟動失敗<br><br>" +
-          "請確認已允許瀏覽器使用相機。";
-
-        console.log(error);
-
+      scanner.stop().then(function() {
+        scanning = false;
+      }).catch(function() {
+        scanning = false;
       });
+
+    },
+    function(errorMessage) {
+      // 掃不到時不顯示錯誤
     }
 
+  ).then(function() {
 
-    // =========================
-    // 手動查詢
-    // =========================
+    scanning = true;
 
-    function manualSearch() {
+  }).catch(function(error) {
 
-      const barcode =
-        document.getElementById("barcodeInput").value.trim();
+    document.getElementById("result").innerHTML =
+      "❌ 相機啟動失敗";
 
-      if (!barcode) {
+    console.log(error);
 
-        document.getElementById("result").innerHTML =
-          "請輸入條碼";
-
-        return;
-      }
-
-      searchProduct(barcode);
-    }
+  });
+}
 
 
-    // =========================
-    // 查詢 Google Sheet
-    // =========================
+function showBarcode(barcode) {
 
-    function searchProduct(barcode) {
-
-      document.getElementById("result").innerHTML =
-        "🔍 查詢商品中...";
-
-      const callbackName =
-        "callback_" + Date.now();
-
-      window[callbackName] = function(data) {
-
-        if (data.found) {
-
-          document.getElementById("result").innerHTML =
-            '<div class="barcode">條碼：' +
-            barcode +
-            '</div>' +
-
-            '<div class="product-name">' +
-            data.name +
-            '</div>' +
-
-            '<div class="price">$' +
-            data.price +
-            '</div>';
-
-        } else {
-
-          document.getElementById("result").innerHTML =
-            '<div class="barcode">條碼：' +
-            barcode +
-            '</div><br>' +
-            '❌ 找不到這個商品';
-
-        }
-
-        delete window[callbackName];
-        script.remove();
-      };
+  document.getElementById("result").innerHTML =
+    '<div class="barcode">掃描到的條碼</div>' +
+    '<div class="product-name">' +
+    barcode +
+    '</div>' +
+    '<br>' +
+    '目前先測試掃描功能。';
+}
 
 
-      const script =
-        document.createElement("script");
+function manualSearch() {
 
-      script.src =
-        API_URL +
-        "?barcode=" +
-        encodeURIComponent(barcode) +
-        "&callback=" +
-        callbackName;
+  const barcode =
+    document.getElementById("barcodeInput").value.trim();
 
-      script.onerror = function() {
+  if (!barcode) {
 
-        document.getElementById("result").innerHTML =
-          "❌ 無法連接商品資料庫";
+    document.getElementById("result").innerHTML =
+      "請輸入條碼";
 
-        delete window[callbackName];
-        script.remove();
-      };
+    return;
+  }
 
-      document.body.appendChild(script);
-    }
+  showBarcode(barcode);
+}
 
 
-    // =========================
-    // 建立掃描按鈕
-    // =========================
+document.addEventListener(
+  "DOMContentLoaded",
+  function() {
 
-    document.addEventListener(
-      "DOMContentLoaded",
-      function() {
+    const reader =
+      document.getElementById("reader");
 
-        const reader =
-          document.getElementById("reader");
+    const button =
+      document.createElement("button");
 
-        const button =
-          document.createElement("button");
+    button.textContent =
+      "📷 開啟相機掃描";
 
-        button.textContent =
-          "📷 開啟相機掃描";
+    button.onclick =
+      startScanner;
 
-        button.onclick =
-          startScanner;
-
-        reader.parentNode.insertBefore(
-          button,
-          reader
-        );
-
-      }
+    reader.parentNode.insertBefore(
+      button,
+      reader
     );
 
-  </script>
+  }
+);
+
+</script>
 
 </body>
 </html>
