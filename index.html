@@ -14,6 +14,7 @@
       background: #f5f5f5;
       margin: 0;
       padding: 20px;
+      color: #333;
     }
 
     .container {
@@ -22,10 +23,12 @@
       background: white;
       padding: 24px;
       border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     }
 
     h1 {
       text-align: center;
+      margin-top: 0;
     }
 
     video {
@@ -46,12 +49,43 @@
       margin-bottom: 10px;
     }
 
+    button:active {
+      opacity: 0.8;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px;
+      font-size: 18px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
     #result {
       margin-top: 20px;
       padding: 16px;
       background: #f5f5f5;
       border-radius: 10px;
-      font-size: 18px;
+      min-height: 50px;
+    }
+
+    .barcode {
+      color: #777;
+      font-size: 14px;
+    }
+
+    .product-name {
+      font-size: 22px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .price {
+      font-size: 30px;
+      font-weight: bold;
+      margin-top: 8px;
     }
   </style>
 </head>
@@ -68,16 +102,35 @@
 
   <video id="video" autoplay muted playsinline></video>
 
+  <input
+    type="text"
+    id="barcodeInput"
+    placeholder="也可以手動輸入條碼"
+    inputmode="numeric"
+  >
+
+  <button onclick="manualSearch()">
+    🔍 查詢價格
+  </button>
+
   <div id="result">
-    尚未掃描
+    尚未查詢商品
   </div>
 
 </div>
 
 <script>
 
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbxCrtLEC2i2wS5x4ju8Bhcb37W2ef20D1makHm4caqKOxfwODa_G1DcfnMS3X6WORUObg/exec";
+
 let codeReader = null;
 let scanning = false;
+
+
+// ==========================
+// 開始掃描
+// ==========================
 
 function startScanner() {
 
@@ -103,13 +156,19 @@ function startScanner() {
 
       if (result) {
 
+        const barcode = result.getText();
+
         scanning = false;
 
+        document.getElementById("barcodeInput").value =
+          barcode;
+
         document.getElementById("result").innerText =
-          "掃描成功！條碼：" +
-          result.getText();
+          "🔍 查詢商品中...";
 
         codeReader.reset();
+
+        searchProduct(barcode);
       }
 
     }
@@ -119,7 +178,7 @@ function startScanner() {
     scanning = true;
 
     document.getElementById("result").innerText =
-      "📷 相機已啟動，請將條碼對準框內";
+      "📷 相機已啟動，請將條碼對準鏡頭";
 
   }).catch(error => {
 
@@ -129,6 +188,108 @@ function startScanner() {
       "❌ 相機無法啟動";
 
   });
+}
+
+
+// ==========================
+// 手動查詢
+// ==========================
+
+function manualSearch() {
+
+  const barcode =
+    document.getElementById("barcodeInput").value.trim();
+
+  if (!barcode) {
+
+    document.getElementById("result").innerText =
+      "請輸入條碼";
+
+    return;
+  }
+
+  searchProduct(barcode);
+}
+
+
+// ==========================
+// 查詢 Google Sheet
+// ==========================
+
+function searchProduct(barcode) {
+
+  document.getElementById("result").innerText =
+    "🔍 查詢商品中...";
+
+
+  const callbackName =
+    "callback_" + Date.now();
+
+
+  window[callbackName] = function(data) {
+
+    if (data.found) {
+
+      document.getElementById("result").innerHTML =
+
+        '<div class="barcode">' +
+        '條碼：' + barcode +
+        '</div>' +
+
+        '<div class="product-name">' +
+        data.name +
+        '</div>' +
+
+        '<div class="price">' +
+        '$' + data.price +
+        '</div>';
+
+    } else {
+
+      document.getElementById("result").innerHTML =
+
+        '<div class="barcode">' +
+        '條碼：' + barcode +
+        '</div><br>' +
+
+        '❌ 找不到這個商品';
+
+    }
+
+    delete window[callbackName];
+
+    if (script.parentNode) {
+      script.parentNode.removeChild(script);
+    }
+  };
+
+
+  const script =
+    document.createElement("script");
+
+
+  script.src =
+    API_URL +
+    "?barcode=" +
+    encodeURIComponent(barcode) +
+    "&callback=" +
+    callbackName;
+
+
+  script.onerror = function() {
+
+    document.getElementById("result").innerText =
+      "❌ 無法連接商品資料庫";
+
+    delete window[callbackName];
+
+    if (script.parentNode) {
+      script.parentNode.removeChild(script);
+    }
+  };
+
+
+  document.body.appendChild(script);
 }
 
 </script>
